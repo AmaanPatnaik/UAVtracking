@@ -1,0 +1,35 @@
+# ... existing imports ...
+@@
+-def load_color_presets(preset_path: str) -> dict:
+-    """Load colour HSV ranges from a YAML file.
+-
+-    The yaml file should map a colour name to a ``lower`` and ``upper`` list of
+-    three integers each (H, S, V). Example::
+-
+-        red:
+-          lower: [0, 120, 70]
+-          upper: [10, 255, 255]
+-    """
+-    with open(preset_path, "r") as f:
+-        data = yaml.safe_load(f)
+-    # Convert to NumPy arrays for OpenCV compatibility
+-    for name, vals in data.items():
+-        data[name]["lower"] = np.array(vals["lower"], dtype=np.uint8)
+-        data[name]["upper"] = np.array(vals["upper"], dtype=np.uint8)
+-    return data
++def load_color_presets(_: str = None) -> dict:
++    """Return hard‑coded HSV ranges for red and blue.
++    The argument is ignored; it exists only for backward compatibility.
++    """
++    return {
++        "red": {
++            "lower": np.array([0, 120, 70], dtype=np.uint8),
++            "upper": np.array([10, 255, 255], dtype=np.uint8),
++        },
++        "blue": {
++            "lower": np.array([100, 150, 0], dtype=np.uint8),
++            "upper": np.array([140, 255, 255], dtype=np.uint8),
++        },
++    }
+*** End Patch
+*** End Patch
