@@ -1,4 +1,4 @@
-import RPi.GPIO as GPIO
+[object Object]import RPi.GPIO as GPIO
 import time
 
 class StepperL298N:
