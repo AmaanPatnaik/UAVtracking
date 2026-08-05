@@ -1,13 +1,12 @@
 import RPi.GPIO as GPIO
 import time
-from typing import Tuple
 
 class StepperL298N:
     """
     Handles low-level coil sequencing for a NEMA 17 bipolar stepper 
     connected to an L298N H-Bridge driver.
     """
-    def __init__(self, pins: Tuple[int, int, int, int]):
+    def __init__(self, pins):
         self.pins = pins
         for pin in self.pins:
             GPIO.setup(pin, GPIO.OUT)
@@ -22,14 +21,14 @@ class StepperL298N:
         ]
         self._current_step = 0
 
-    def step(self, direction: int = 1, delay: float = 0.01):
+    def step(self, direction=1, delay=0.01):
         """Move the motor one step."""
         self._current_step = (self._current_step + direction) % 4
         for pin, val in zip(self.pins, self._sequence[self._current_step]):
             GPIO.output(pin, val)
         time.sleep(delay)
 
-    def rotate(self, steps: int, direction: int = 1, speed: float = 0.01):
+    def rotate(self, steps, direction=1, speed=0.01):
         """Rotate the motor a specific number of steps."""
         for _ in range(abs(steps)):
             self.step(direction, delay=speed)
@@ -41,7 +40,7 @@ class StepperL298N:
 
 class TurretHardware:
     """High-level manager for the Turret's three motors."""
-    def __init__(self, config: dict):
+    def __init__(self, config):
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
 
@@ -55,4 +54,3 @@ class TurretHardware:
         self.pivot.disable()
         self.spindex.disable()
         GPIO.cleanup()
-```
