@@ -1,4 +1,4 @@
-import json
+
 import threading
 import time
 import os
@@ -21,6 +21,30 @@ system_state = {"running": False, "target_locked": False, "shots_fired": 0}
 hw = TurretHardware(CONFIG)
 vision = DroneDetector(CONFIG)
 kinematics = TurretKinematics(CONFIG)
+
+def perform_startup_test():
+    """Moves each motor slightly on boot to verify hardware."""
+    print("\n--- Starting Hardware Self-Test ---")
+    try:
+        # Test Azimuth
+        print("Testing Azimuth...")
+        hw.azimuth.rotate(100, direction=1, speed=0.005)
+        time.sleep(0.2)
+        hw.azimuth.rotate(100, direction=-1, speed=0.005)
+
+        # Test Pivot
+        print("Testing Pivot...")
+        hw.pivot.rotate(100, direction=1, speed=0.005)
+        time.sleep(0.2)
+        hw.pivot.rotate(100, direction=-1, speed=0.005)
+
+        # Test Spindexer (Move one slot)
+        print("Testing Spindexer...")
+        hw.spindex.rotate(CONFIG['mechanical']['spindexer_steps_per_shot'], direction=1, speed=0.005)
+        
+        print("--- Hardware Self-Test Complete! ---\n")
+    except Exception as e:
+        print(f"Startup test failed: {e}")
 
 def turret_loop():
     """The main control loop for tracking and firing."""
@@ -93,10 +117,13 @@ def reset():
     return {"status": "Stats Reset"}
 
 if __name__ == "__main__":
-    # Start Turret Brain in a background thread
+    # 1. Perform Hardware Test on boot
+    perform_startup_test()
+
+    # 2. Start Turret Brain in a background thread
     t = threading.Thread(target=turret_loop, daemon=True)
     t.start()
     
-    # Start API Server on all interfaces, port 8000
-    # Accessible via http://<pi-ip>:8000/start
+    # 3. Start API Server on all interfaces, port 8000
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
