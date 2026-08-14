@@ -1,4 +1,4 @@
-"import time
+import time
 import cv2
 from color_tracker.tracker import DroneTracker
 from motor import MotorController
