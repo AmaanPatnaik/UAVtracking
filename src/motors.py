@@ -41,12 +41,14 @@ class StepperA4988:
     def enable(self):
         """Energize coils to hold position."""
         if self.enable_pin is not None:
-            GPIO.output(self.enable_pin, GPIO.LOW)
+            # Corrected: HIGH = ENABLED based on user feedback
+            GPIO.output(self.enable_pin, GPIO.HIGH)
 
     def disable(self):
         """De-energize coils to save power and prevent heat."""
         if self.enable_pin is not None:
-            GPIO.output(self.enable_pin, GPIO.HIGH)
+            # Corrected: LOW = DISABLED based on user feedback
+            GPIO.output(self.enable_pin, GPIO.LOW)
 
 class TurretHardware:
     """High-level manager for the Turret's three A4988 motors."""
