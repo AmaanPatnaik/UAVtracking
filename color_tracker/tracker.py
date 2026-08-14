@@ -1,135 +1,100 @@
-
-# color_tracker/tracker.py
-"""Simple colour‑based object tracker using the built‑in webcam.
-
-Features
---------
-* Detects a single colour (red or blue) based on HSV thresholds.
-* Optional ``--color`` argument to choose red or blue.
-* Optional ``--tune`` argument opens HSV trackbars for live tweaking.
-* Shows the webcam feed with a circle around the detected object and a binary mask.
-"""
-
-import argparse
+"# color_tracker/tracker.py
 import cv2
 import numpy as np
-import os
 
-# ---------------------------------------------------------------------------
-# Helper functions
-# ---------------------------------------------------------------------------
-def load_color_presets(_: str = None) -> dict:
-    """Return hard‑coded HSV ranges for red and blue.
-    The argument is ignored; it exists only for backward compatibility.
-    """
-    return {
-        "red": {
-            "lower": np.array([0, 120, 70], dtype=np.uint8),
-            "upper": np.array([10, 255, 255], dtype=np.uint8),
-        },
-        "blue": {
-            "lower": np.array([100, 150, 0], dtype=np.uint8),
-            "upper": np.array([140, 255, 255], dtype=np.uint8),
-        },
-    }
+class DroneTracker:
+    \"\"\"
+    Stereo colour-based object tracker for two drones.
+    Provides 3D position estimation based on two camera feeds.
+    \"\"\"
 
-def get_mask(hsv_frame: np.ndarray, lower: np.ndarray, upper: np.ndarray) -> np.ndarray:
-    """Return a cleaned binary mask for the given HSV range."""
-    mask = cv2.inRange(hsv_frame, lower, upper)
-    kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
-    return mask
+    def __init__(self, baseline=2.0, focal_length=600.0, cam0_idx=0, cam1_idx=1):
+        self.baseline = baseline
+        self.focal_length = focal_length
+        
+        # Initialize cameras
+        self.cap_left = cv2.VideoCapture(cam0_idx)
+        self.cap_right = cv2.VideoCapture(cam1_idx)
 
-def create_hsv_trackbars(window_name: str, lower: np.ndarray, upper: np.ndarray) -> None:
-    """Create six trackbars (L‑H, L‑S, L‑V, U‑H, U‑S, U‑V) for HSV tuning."""
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    cv2.createTrackbar("L‑H", window_name, int(lower[0]), 179, lambda _: None)
-    cv2.createTrackbar("L‑S", window_name, int(lower[1]), 255, lambda _: None)
-    cv2.createTrackbar("L‑V", window_name, int(lower[2]), 255, lambda _: None)
-    cv2.createTrackbar("U‑H", window_name, int(upper[0]), 179, lambda _: None)
-    cv2.createTrackbar("U‑S", window_name, int(upper[1]), 255, lambda _: None)
-    cv2.createTrackbar("U‑V", window_name, int(upper[2]), 255, lambda _: None)
+        if not self.cap_left.isOpened() or not self.cap_right.isOpened():
+            raise RuntimeError(\"Unable to open one or both webcams.\")
 
-def read_hsv_from_trackbars(window_name: str) -> tuple[np.ndarray, np.ndarray]:
-    """Read current HSV values from the trackbars and return (lower, upper)."""
-    lower = np.array([
-        cv2.getTrackbarPos("L‑H", window_name),
-        cv2.getTrackbarPos("L‑S", window_name),
-        cv2.getTrackbarPos("L‑V", window_name)
-    ], dtype=np.uint8)
-    upper = np.array([
-        cv2.getTrackbarPos("U‑H", window_name),
-        cv2.getTrackbarPos("U‑S", window_name),
-        cv2.getTrackbarPos("U‑V", window_name)
-    ], dtype=np.uint8)
-    return lower, upper
+        # HSV Ranges
+        self.color_presets = {
+            \"orange\": {
+                \"lower\": np.array([0, 0, 88], dtype=np.uint8),
+                \"upper\": np.array([90, 150, 255], dtype=np.uint8),
+            },
+            \"yellow\": {
+                \"lower\": np.array([0, 96, 0], dtype=np.uint8),
+                \"upper\": np.array([19, 222, 232], dtype=np.uint8),
+            },
+        }
 
-# ---------------------------------------------------------------------------
-# Main routine
-# ---------------------------------------------------------------------------
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Colour‑based object tracker (red/blue).")
-    parser.add_argument("--color", default="red", choices=["red", "blue"],
-                        help="Colour preset to track (default: red)")
-    parser.add_argument("--tune", action="store_true",
-                        help="Show HSV trackbars for live tuning")
-    args = parser.parse_args()
+    def _get_mask(self, hsv_frame, lower, upper):
+        mask = cv2.inRange(hsv_frame, lower, upper)
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
+        return mask
 
-
-    # Load colour presets (hard‑coded, no external file needed)
-    color_presets = load_color_presets()
-    if args.color not in color_presets:
-        raise ValueError(f"Colour '{args.color}' not recognised.")
-
-    lower_hsv = color_presets[args.color]["lower"].copy()
-    upper_hsv = color_presets[args.color]["upper"].copy()
-
-    # Initialise webcam (default device 0 – built‑in camera)
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        raise RuntimeError("Unable to open webcam (device 0).")
-
-    if args.tune:
-        create_hsv_trackbars("HSV‑Tuner", lower_hsv, upper_hsv)
-
-    print(f"Tracking colour: {args.color} (press ESC to quit)")
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Frame capture failed – exiting.")
-            break
-
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        if args.tune:
-            lower_hsv, upper_hsv = read_hsv_from_trackbars("HSV‑Tuner")
-
-        mask = get_mask(hsv, lower_hsv, upper_hsv)
+    def _find_object_center(self, mask):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
         if contours:
             biggest = max(contours, key=cv2.contourArea)
             if cv2.contourArea(biggest) > 500:
-                (x, y), radius = cv2.minEnclosingCircle(biggest)
-                center = (int(x), int(y))
-                radius = int(radius)
-                cv2.circle(frame, center, radius, (0, 255, 0), 2)   # green outline
-                cv2.circle(frame, center, 5, (0, 0, 255), -1)      # red centre dot
-                print(f"Object centre: ({center[0]}, {center[1]})")
+                (x, y), _ = cv2.minEnclosingCircle(biggest)
+                return (int(x), int(y))
+        return None
 
-        cv2.imshow("Webcam", frame)
-        cv2.imshow("Mask", mask)
+    def _estimate_3d_position(self, left_center, right_center, center_x):
+        if left_center is None or right_center is None:
+            return None
 
-        if cv2.waitKey(1) & 0xFF == 27:   # ESC key
-            break
+        disparity = left_center[0] - right_center[0]
+        if disparity == 0:
+            return None
 
-    cap.release()
-    cv2.destroyAllWindows()
+        # Z = (f * B) / disparity
+        z = (self.focal_length * self.baseline) / disparity
+        # X = (x_left - cx) * Z / f
+        x = (left_center[0] - center_x) * z / self.focal_length
+        # Y estimation (simplified)
+        y = 0 
+        
+        return (x, y, z)
 
-if __name__ == "__main__":
-    main()
-    cv2.destroyAllWindows()
+    def update(self):
+        \"\"\"
+        Captures frames and returns the 3D positions of the detected drones.
+        Returns: dict { 'yellow': (x,y,z) or None, 'orange': (x,y,z) or None }
+        \"\"\"
+        ret_l, frame_l = self.cap_left.read()
+        ret_r, frame_r = self.cap_right.read()
 
-if __name__ == "__main__":
-    main()
+        if not ret_l or not ret_r:
+            return None
+
+        hsv_l = cv2.cvtColor(frame_l, cv2.COLOR_BGR2HSV)
+        hsv_r = cv2.cvtColor(frame_r, cv2.COLOR_BGR2HSV)
+
+        height, width, _ = frame_l.shape
+        center_x = width // 2
+
+        results = {}
+        for color_name, range_vals in self.color_presets.items():
+            mask_l = self._get_mask(hsv_l, range_vals[\"lower\"], range_vals[\"upper\"])
+            mask_r = self._get_mask(hsv_r, range_vals[\"lower\"], range_vals[\"upper\"])
+
+            center_l = self._find_object_center(mask_l)
+            center_r = self._find_object_center(mask_r)
+
+            pos_3d = self._estimate_3d_position(center_l, center_r, center_x)
+            results[color_name] = pos_3d
+
+        return results
+
+    def release(self):
+        self.cap_left.release()
+        self.cap_right.release()
+"
