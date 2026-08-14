@@ -1,4 +1,4 @@
-import json
+"import json
 import threading
 import time
 import os
@@ -15,7 +15,7 @@ with open(CONFIG_PATH) as f:
     CONFIG = json.load(f)
 
 app = FastAPI()
-system_state = {"running": False, "target_locked": False, "shots_fired": 0}
+system_state = {\"running\": False, \"target_locked\": False, \"shots_fired\": 0}
 
 # Global hardware objects
 hw = TurretHardware(CONFIG)
@@ -23,65 +23,63 @@ vision = DroneDetector(CONFIG)
 kinematics = TurretKinematics(CONFIG)
 
 def perform_startup_test():
-    """Moves each motor slightly on boot to verify hardware and checks for camera."""
-    print("\n--- Starting Hardware Self-Test ---")
+    \"\"\"Moves each motor slightly on boot to verify hardware and checks for camera.\"\"\"
+    print(\"\\n--- Starting Hardware Self-Test ---\")
     
-    # 1. CAMERA CHECK
-    print("Checking camera...")
-    if not vision.cap.isOpened():
-        print("CRITICAL ERROR: Camera not detected!")
-        print("Entering Panic Mode: Spinning all motors continuously...")
-        try:
-            while True:
-                # Spin all motors continuously as a warning
-                hw.azimuth.step(direction=1, delay=0.002)
-                hw.pivot.step(direction=1, delay=0.002)
-                hw.spindex.step(direction=1, delay=0.002)
-        except KeyboardInterrupt:
-            print("Panic mode stopped by user.")
-            return
+    # CAMERA CHECK
+    print(\"Checking cameras...\")
+    if not vision.caps:
+        print(\"CRITICAL ERROR: No cameras detected!\")
+        return
 
     try:
         # Test Azimuth
-        print("Testing Azimuth...")
+        print(\"Testing Azimuth...\")
         hw.azimuth.rotate(100, direction=1, speed=0.005)
         time.sleep(0.2)
         hw.azimuth.rotate(100, direction=-1, speed=0.005)
 
         # Test Pivot
-        print("Testing Pivot...")
+        print(\"Testing Pivot...\")
         hw.pivot.rotate(100, direction=1, speed=0.005)
         time.sleep(0.2)
         hw.pivot.rotate(100, direction=-1, speed=0.005)
 
         # Test Spindexer (Move one slot)
-        print("Testing Spindexer...")
+        print(\"Testing Spindexer...\")
         hw.spindex.rotate(CONFIG['mechanical']['spindexer_steps_per_shot'], direction=1, speed=0.005)
         
-        print("--- Hardware Self-Test Complete! ---\n")
+        print(\"--- Hardware Self-Test Complete! ---\\n\")
     except Exception as e:
-        print(f"Startup test failed: {e}")
+        print(f\"Startup test failed: {e}\")
 
 def turret_loop():
-    """The main control loop for tracking and firing."""
+    \"\"\"The main control loop for tracking and firing.\"\"\"
     global system_state
     center = (CONFIG['vision']['camera_width'] // 2, CONFIG['vision']['camera_height'] // 2)
     lock_start_time = None
 
-    print("Turret Brain initialized and waiting for start command...")
+    print(\"Turret Brain initialized and waiting for start command...\")
 
     try:
         while True:
-            if not system_state["running"]:
+            if not system_state[\"running\"]:
                 time.sleep(0.1)
                 continue
 
-            # 1. Target Detection (Default to red)
-            target, frame = vision.get_target("red")
+            # 1. Target Detection (Multi-target, priority: yellow then orange)
+            targets = vision.get_targets([\"yellow\", \"orange\"])
             
-            if target:
+            # Determine which drone to track (Priority Order)
+            active_target = None
+            for color in [\"yellow\", \"orange\"]:
+                if color in targets:
+                    active_target = targets[color]['center']
+                    break
+            
+            if active_target:
                 # 2. Tracking: Convert pixel error to motor movements
-                dir_h, speed_h, dir_v, speed_v = kinematics.get_motor_commands(target, center)
+                dir_h, speed_h, dir_v, speed_v = kinematics.get_motor_commands(active_target, center)
                 
                 # Execute movements synchronously to reduce jitter
                 hw.step_synchronized([
@@ -90,15 +88,15 @@ def turret_loop():
                 ])
 
                 # 3. Lock-on Check
-                dist_from_center = ((target[0] - center[0])**2 + (target[1] - center[1])**2)**0.5
+                dist_from_center = ((active_target[0] - center[0])**2 + (active_target[1] - center[1])**2)**0.5
                 if dist_from_center < CONFIG['vision']['lock_zone_pixels']:
                     if lock_start_time is None:
                         lock_start_time = time.time()
                     
                     if time.time() - lock_start_time > CONFIG['vision']['lock_duration_seconds']:
-                        print(f"TARGET LOCKED! Firing ball {system_state['shots_fired'] + 1}...")
+                        print(f\"TARGET LOCKED! Firing ball {system_state['shots_fired'] + 1}...\")
                         hw.spindex.rotate(CONFIG['mechanical']['spindexer_steps_per_shot'])
-                        system_state["shots_fired"] += 1
+                        system_state[\"shots_fired\"] += 1
                         lock_start_time = None
                 else:
                     lock_start_time = None
@@ -106,31 +104,31 @@ def turret_loop():
                 lock_start_time = None
 
     except Exception as e:
-        print(f"Critical error in turret loop: {e}")
+        print(f\"Critical error in turret loop: {e}\")
     finally:
         hw.cleanup()
 
-@app.get("/start")
+@app.get(\"/start\")
 def start():
-    system_state["running"] = True
-    return {"status": "Turret Active"}
+    system_state[\"running\"] = True
+    return {\"status\": \"Turret Active\"}
 
-@app.get("/stop")
+@app.get(\"/stop\")
 def stop():
-    system_state["running"] = False
-    return {"status": "Turret Stopped"}
+    system_state[\"running\"] = False
+    return {\"status\": \"Turret Stopped\"}
 
-@app.get("/status")
+@app.get(\"/status\")
 def status():
     return system_state
 
-@app.get("/reset")
+@app.get(\"/reset\")
 def reset():
-    system_state["shots_fired"] = 0
-    return {"status": "Stats Reset"}
+    system_state[\"shots_fired\"] = 0
+    return {\"status\": \"Stats Reset\"}
 
-if __name__ == "__main__":
+if __name__ == \"__main__\":
     perform_startup_test()
     t = threading.Thread(target=turret_loop, daemon=True)
     t.start()
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=\"0.0.0.0\", port=8000)"

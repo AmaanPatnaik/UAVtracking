@@ -1,1 +1,37 @@
-{"gpio_pins":{"azimuth":{"step":17,"dir":27,"enable":22},"pivot":{"step":5,"dir":6,"enable":13},"spindex":{"step":12,"dir":16,"enable":20}},"mechanical":{"azimuth_ratio":5,"pivot_ratio":2.5,"steps_per_rev":200,"spindexer_steps_per_shot":25,"pivot_limit_max":70},"vision":{"camera_width":640,"camera_height":480,"lock_zone_pixels":15,"lock_duration_seconds":0.2,"pixels_per_degree_h":3.5,"pixels_per_degree_v":3.5},"pid":{"kp":0.1,"ki":0.01,"kd":0.05,"max_speed_delay":0.002,"min_speed_delay":0.01},"colors":{"red":{"lower":[0,120,70],"upper":[10,255,255]},"blue":{"lower":[100,150,0],"upper":[140,255,255]}}}
+{
+  "gpio_pins": {
+    "azimuth": {"step": 17, "dir": 27, "enable": 22},
+    "pivot": {"step": 5, "dir": 6, "enable": 13},
+    "spindex": {"step": 12, "dir": 16, "enable": 20}
+  },
+  "mechanical": {
+    "azimuth_ratio": 5,
+    "pivot_ratio": 2.5,
+    "steps_per_rev": 200,
+    "spindexer_steps_per_shot": 25,
+    "pivot_limit_max": 70
+  },
+  "vision": {
+    "camera_indices": [0, 1],
+    "baseline_feet": 2.4167,
+    "camera_width": 640,
+    "camera_height": 480,
+    "lock_zone_pixels": 15,
+    "lock_duration_seconds": 0.2,
+    "pixels_per_degree_h": 3.5,
+    "pixels_per_degree_v": 3.5
+  },
+  "pid": {
+    "kp": 0.1,
+    "ki": 0.01,
+    "kd": 0.05,
+    "max_speed_delay": 0.002,
+    "min_speed_delay": 0.01
+  },
+  "colors": {
+    "yellow": {"lower": [0, 96, 0], "upper": [19, 222, 232]},
+    "orange": {"lower": [0, 0, 88], "upper": [90, 150, 255]},
+    "red": {"lower": [0, 120, 70], "upper": [10, 255, 255]},
+    "blue": {"lower": [100, 150, 0], "upper": [140, 255, 255]}
+  }
+}
