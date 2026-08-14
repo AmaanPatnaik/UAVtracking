@@ -66,20 +66,26 @@ class DroneTracker:
 
     def update(self):
         """
-        Captures frames and returns the 3D positions of the detected drones.
-        Returns: dict { 'yellow': (x,y,z) or None, 'orange': (x,y,z) or None }
+        Captures frames and returns the 3D positions of the detected drones and the frames.
+        Returns: (dict { 'yellow': (x,y,z) or None, 'orange': (x,y,z) or None }, frame_l, frame_r)
         """
         ret_l, frame_l = self.cap_left.read()
         ret_r, frame_r = self.cap_right.read()
 
         if not ret_l or not ret_r:
-            return None
+            return None, None, None
 
         hsv_l = cv2.cvtColor(frame_l, cv2.COLOR_BGR2HSV)
         hsv_r = cv2.cvtColor(frame_r, cv2.COLOR_BGR2HSV)
 
         height, width, _ = frame_l.shape
         center_x = width // 2
+
+        # BGR colors for drawing
+        draw_colors = {
+            "orange": (0, 165, 255),
+            "yellow": (0, 255, 255),
+        }
 
         results = {}
         for color_name, range_vals in self.color_presets.items():
@@ -89,10 +95,21 @@ class DroneTracker:
             center_l = self._find_object_center(mask_l)
             center_r = self._find_object_center(mask_r)
 
+            # Draw detections on frames for visual feedback
+            color = draw_colors.get(color_name, (0, 255, 0))
+            if center_l:
+                cv2.circle(frame_l, center_l, 10, color, -1)
+                cv2.putText(frame_l, color_name, (center_l[0]+15, center_l[1]), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            if center_r:
+                cv2.circle(frame_r, center_r, 10, color, -1)
+                cv2.putText(frame_r, color_name, (center_r[0]+15, center_r[1]), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+
             pos_3d = self._estimate_3d_position(center_l, center_r, center_x)
             results[color_name] = pos_3d
 
-        return results
+        return results, frame_l, frame_r
 
     def release(self):
         self.cap_left.release()
