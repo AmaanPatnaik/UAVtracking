@@ -1,4 +1,4 @@
-import time
+"import time
 import cv2
 from color_tracker.tracker import DroneTracker
 from motor import MotorController
@@ -13,18 +13,18 @@ def main():
     try:
         # Initialize components
         # Updated camera indices to 0 and 2 based on /dev/video* output
-        tracker = DroneTracker(baseline=xBASELINE, focal_length=FOCAL_LENGTH, cam0_idx=0, cam1_idx=2)
+        tracker = DroneTracker(baseline=BASELINE, focal_length=FOCAL_LENGTH, cam0_idx=0, cam1_idx=2)
         motors = MotorController()
         
-        print(\"System initialized. Tracking drones...\")
-        print(\"Press Ctrl+C to stop.\")
+        print('System initialized. Tracking drones...')
+        print('Press Ctrl+C to stop.')
 
         while True:
             # 1. Get positions and frames from vision system
             positions, frame_l, frame_r = tracker.update()
             
             if positions is None:
-                print(\"Failed to capture frames, retrying...\")
+                print('Failed to capture frames, retrying...')
                 continue
 
             # Display camera feeds
@@ -36,7 +36,7 @@ def main():
             for drone_id, pos in positions.items():
                 if pos is not None:
                     x, y, z = pos
-                    print(f\"{drone_id.capitalize()} drone at X: {x:.2f}, Z: {z:.2f} ft\")
+                    print(f'{drone_id.capitalize()} drone at X: {x:.2f}, Z: {z:.2f} ft')
 
                     # --- Simple Proportional Control Logic ---
                     # Adjust Z (Throttle/Pitch)
@@ -55,14 +55,14 @@ def main():
                     # 3. Send commands to motors
                     motors.set_speeds(drone_id, throttle, 0, pitch, roll)
                 else:
-                    print(f\"{drone_id.capitalize()} drone NOT detected.\")
+                    print(f'{drone_id.capitalize()} drone NOT detected.')
 
             time.sleep(0.1)  # Control loop frequency
 
     except KeyboardInterrupt:
-        print(\"Shutting down...\")
+        print('Shutting down...')
     except Exception as e:
-        print(f\"Error: {e}\")
+        print(f'Error: {e}')
     finally:
         if 'motors' in locals():
             motors.stop_all()
@@ -71,5 +71,5 @@ def main():
             tracker.release()
         cv2.destroyAllWindows()
 
-if __name__ == \"__main__\":
+if __name__ == '__main__':
     main()"
